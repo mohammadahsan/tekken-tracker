@@ -1,0 +1,13 @@
+{
+  "name": "tekken-tracker",
+  "version": "1.0.0",
+  "description": "EVO Japan 2026 Tekken 8 bracket tracker for Pakistani players",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.4.5"
+  }
+}

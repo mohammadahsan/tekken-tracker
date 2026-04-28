@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EVO Japan 2026 — Tekken 8 🇵🇰</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <h1>EVO Japan 2026 <span class="dim">/ Tekken 8</span></h1>
+      <span id="event-meta"></span>
+    </div>
+    <div class="header-right">
+      <span id="last-updated" class="muted"></span>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="auto-refresh">
+        <span>Auto (60s)</span>
+      </label>
+      <button id="btn-refresh">Refresh</button>
+    </div>
+  </header>
+
+  <div id="error-banner" class="error-banner hidden"></div>
+
+  <main>
+
+    <!-- Players row -->
+    <section>
+      <h2 class="section-label">Tracked Players</h2>
+      <div id="players-grid" class="players-grid">
+        <div class="skeleton-row"></div>
+      </div>
+
+      <div class="player-search">
+        <div class="search-row">
+          <input type="text" id="search-input" class="search-input" placeholder="Search entrants to track…" autocomplete="off">
+          <button id="btn-search">Search</button>
+        </div>
+        <div id="search-status" class="search-status"></div>
+        <div id="search-results" class="search-results"></div>
+      </div>
+    </section>
+
+    <!-- Timelines -->
+    <section>
+      <h2 class="section-label">Match Timelines
+        <span class="hint">Click any projected match to override winner</span>
+      </h2>
+      <div id="timelines-container">
+        <div class="skeleton-row tall"></div>
+      </div>
+    </section>
+
+    <!-- Collisions -->
+    <section>
+      <h2 class="section-label">
+        Player Collisions
+        <button id="btn-reset-overrides" class="btn-ghost hidden">Reset Overrides</button>
+      </h2>
+      <div id="collisions-container">
+        <p class="muted">Loading...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Override modal -->
+  <div id="override-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-box">
+      <p class="modal-label">Override: who wins?</p>
+      <div id="modal-buttons" class="modal-buttons"></div>
+      <button class="btn-ghost modal-clear" id="modal-clear">Clear override</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
