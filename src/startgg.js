@@ -108,6 +108,7 @@ const PHASE_GROUP_BRACKET_QUERY = `
         pageInfo { total totalPages }
         nodes {
           id
+          identifier
           round
           fullRoundText
           completedAt
@@ -119,6 +120,13 @@ const PHASE_GROUP_BRACKET_QUERY = `
             entrant { id name }
             prereqId
             prereqType
+            standing {
+              stats {
+                score {
+                  value
+                }
+              }
+            }
           }
         }
       }

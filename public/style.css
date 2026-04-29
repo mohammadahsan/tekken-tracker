@@ -60,6 +60,26 @@ header h1 .dim { color: var(--muted); font-weight: 400; }
 .header-left { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .header-right { display: flex; align-items: center; gap: 14px; }
 
+/* ── Page nav tabs ──────────────────────────────────────────── */
+.page-tabs { display: flex; gap: 2px; }
+
+.page-tab {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.page-tab:hover { color: var(--text); border-color: var(--border); }
+.page-tab.active { color: var(--accent); border-color: var(--accent); }
+
 .toggle-wrap {
   display: flex;
   align-items: center;

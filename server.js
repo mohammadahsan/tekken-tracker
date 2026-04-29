@@ -9,8 +9,8 @@ const { findDirectCollisions, getPlayerTimeline, simulateBracket } = require('./
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-const EVENT_SLUG = 'tournament/evo-japan-2026-presented-by-levtech/event/evo-japan-2026-tekken-8';
+let EVENT_SLUG = process.env.EVENT_SLUG
+  || 'tournament/lvl-up-expo-2026-1/event/tekken-8-5-000-prize-pool';
 
 // Start with 2 entrants; POST /api/config to update
 let TRACKED_IDS = [22318059, 22785074, 22264159, 22927499];
@@ -137,15 +137,23 @@ app.post('/api/refresh', (req, res) => {
   res.json({ ok: true, clearedAt: new Date().toISOString() });
 });
 
-// Update the list of tracked entrant IDs at runtime
+// Update event slug and/or tracked entrant IDs at runtime
 app.post('/api/config', (req, res) => {
-  const { entrantIds } = req.body || {};
-  if (!Array.isArray(entrantIds) || !entrantIds.length) {
-    return res.status(400).json({ error: 'entrantIds must be a non-empty array' });
+  const { entrantIds, eventSlug } = req.body || {};
+
+  if (eventSlug && typeof eventSlug === 'string' && eventSlug.trim()) {
+    EVENT_SLUG = eventSlug.trim();
   }
-  TRACKED_IDS = entrantIds.map(Number).filter(Boolean);
+
+  if (entrantIds !== undefined) {
+    if (!Array.isArray(entrantIds) || !entrantIds.length) {
+      return res.status(400).json({ error: 'entrantIds must be a non-empty array' });
+    }
+    TRACKED_IDS = entrantIds.map(Number).filter(Boolean);
+  }
+
   clearCache();
-  res.json({ ok: true, trackedIds: TRACKED_IDS });
+  res.json({ ok: true, trackedIds: TRACKED_IDS, eventSlug: EVENT_SLUG });
 });
 
 app.get('/api/status', (req, res) => {
