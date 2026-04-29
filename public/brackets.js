@@ -442,11 +442,13 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
   const eid     = String(entrant?.id || '');
   const tracked = eid && trackedSet.has(eid);
 
-  const scoreVal     = slot?.standing?.stats?.score?.value;
-  const isDQ         = scoreVal === -1;
-  const isWinner     = entrant && set.completedAt && String(set.winnerId) === eid;
-  const isLoser      = entrant && set.completedAt && !isWinner;
-  const isOverrideW  = !set.completedAt && eid && state.overrides[sid] === eid;
+  const scoreVal        = slot?.standing?.stats?.score?.value;
+  const isDQ            = scoreVal === -1;
+  const isWinner        = entrant && set.completedAt && String(set.winnerId) === eid;
+  const isLoser         = entrant && set.completedAt && !isWinner;
+  const overrideWinnerId = !set.completedAt ? (state.overrides[sid] || null) : null;
+  const isOverrideW     = !!(eid && overrideWinnerId && overrideWinnerId === eid);
+  const isOverrideL     = !!(eid && overrideWinnerId && overrideWinnerId !== eid);
 
   // Left accent bar
   const barColor = (isWinner || isOverrideW) ? '#22c55e'
