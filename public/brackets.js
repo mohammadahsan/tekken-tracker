@@ -166,7 +166,10 @@ function computeProjected(sets, overrides) {
           if (String(sl.prereqId) !== sid) continue;
           const key = `${next.id}:${sl.slotIndex ?? 0}`;
           if (proj.has(key)) continue;
-          const ent = sl.prereqType === 'loser' ? loser : winner;
+          // Detect loser feed structurally: winners bracket → losers bracket
+          const isLoserFeed = sl.prereqType === 'loser'
+            || ((set.round || 0) >= 0 && (next.round || 0) < 0);
+          const ent = isLoserFeed ? loser : winner;
           if (ent) { proj.set(key, ent); changed = true; }
         }
       }
@@ -452,8 +455,8 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
 
   // Left accent bar
   const barColor = (isWinner || isOverrideW) ? '#22c55e'
-    : isLoser   ? '#ef4444'
-    : tracked   ? '#ff6200'
+    : (isLoser || isOverrideL) ? '#ef4444'
+    : tracked                  ? '#ff6200'
     : '#23233a';
 
   card.append('rect')
@@ -475,14 +478,14 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
     nameTxt    = truncate(entrant.name, 19);
     fontWeight = (isWinner || isOverrideW || tracked) ? '600' : '400';
     fontStyle  = isProj ? 'italic' : 'normal';
-    nameColor  = tracked             ? '#ff8330'
-      : (isWinner || isOverrideW)    ? '#e8eaf6'
-      : isLoser                      ? '#484860'
-      : isProj                       ? '#6868a0'
+    nameColor  = tracked                    ? '#ff8330'
+      : (isWinner || isOverrideW)           ? '#e8eaf6'
+      : (isLoser  || isOverrideL)           ? '#484860'
+      : isProj                              ? '#6868a0'
       : '#9090b8';
   } else {
     // TBD — show "winner of X" / "loser of X"
-    nameTxt   = getTBDLabel(slot, setMap);
+    nameTxt   = getTBDLabel(slot, setMap, set.round);
     nameColor = '#2e2e44';
     fontStyle = 'italic';
   }
@@ -516,6 +519,10 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
     scoreTxt  = '✓';
     scoreBg   = 'rgba(34,197,94,0.12)';
     scoreFill = '#22c55e';
+  } else if (isOverrideL) {
+    scoreTxt  = 'L';
+    scoreBg   = 'rgba(239,68,68,0.10)';
+    scoreFill = '#6b6b8a';
   }
 
   if (scoreTxt) {
@@ -532,12 +539,17 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
 }
 
 // ─── TBD label from prereq metadata ──────────────────────────────────────────
-function getTBDLabel(slot, setMap) {
+// A slot is a "loser feed" if prereqType says so, OR if the source set is in
+// the winners bracket (round ≥ 0) and the destination set is in the losers
+// bracket (round < 0) — start.gg doesn't always return prereqType='loser'.
+function getTBDLabel(slot, setMap, currentRound) {
   if (!slot?.prereqId) return 'TBD';
   const feeder = setMap?.get(String(slot.prereqId));
   const ident  = feeder?.identifier;
   if (!ident) return 'TBD';
-  return slot.prereqType === 'loser' ? `loser of ${ident}` : `winner of ${ident}`;
+  const isLoserFeed = slot.prereqType === 'loser'
+    || ((feeder.round || 0) >= 0 && (currentRound || 0) < 0);
+  return isLoserFeed ? `loser of ${ident}` : `winner of ${ident}`;
 }
 
 // ─── Override picker modal ────────────────────────────────────────────────────
