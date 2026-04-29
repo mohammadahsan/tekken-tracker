@@ -12,6 +12,8 @@ const HEADER_H = 34;
 const TOP_PAD  = 10;
 const SEC_GAP  = 56;
 const SLUG_KEY = 'tekken_event_slug';
+const PILL_W   = 152;
+const PILL_H   = 22;
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 const state = {
@@ -19,6 +21,7 @@ const state = {
   showProjected: true,
   pendingSetId:  null,
   trackedSet:    new Set(),
+  allSetsMap:    new Map(),  // global setId → set across ALL fetched brackets
 };
 
 // pgId → { wrap, sets, trackedSet, zoomFns }
@@ -56,8 +59,35 @@ async function init() {
       return;
     }
 
-    for (const [pgId, sets] of Object.entries(brackets)) {
-      if (!sets?.length) continue;
+    // Build global set map for cross-phase projection and pill labels
+    state.allSetsMap = new Map();
+    for (const [, pgSets] of Object.entries(brackets)) {
+      for (const s of (pgSets || [])) state.allSetsMap.set(String(s.id), s);
+    }
+
+    // Sort phase groups by phase order (from event.phases), then by displayIdentifier
+    const phaseOrder = new Map((event?.phases || []).map((p, i) => [String(p.id), i]));
+    const pgEntries = Object.entries(brackets).filter(([, s]) => s?.length);
+    pgEntries.sort(([, aSets], [, bSets]) => {
+      const aPG = aSets[0]?.phaseGroup;
+      const bPG = bSets[0]?.phaseGroup;
+      const ai  = phaseOrder.get(String(aPG?.phase?.id)) ?? 999;
+      const bi  = phaseOrder.get(String(bPG?.phase?.id)) ?? 999;
+      if (ai !== bi) return ai - bi;
+      return (aPG?.displayIdentifier || '').localeCompare(bPG?.displayIdentifier || '');
+    });
+
+    // Render phase groups with section headers between phases
+    let lastPhaseName = null;
+    for (const [pgId, sets] of pgEntries) {
+      const phaseName = sets[0]?.phaseGroup?.phase?.name || '';
+      if (phaseName && phaseName !== lastPhaseName) {
+        const hdr = document.createElement('div');
+        hdr.className = 'phase-section-header';
+        hdr.textContent = phaseName;
+        container.appendChild(hdr);
+        lastPhaseName = phaseName;
+      }
       buildPhaseGroup(container, pgId, sets, state.trackedSet);
     }
   } catch (err) {
@@ -110,14 +140,16 @@ function buildPhaseGroup(container, pgId, sets, trackedSet) {
 }
 
 // ─── Render / re-render one phase group ───────────────────────────────────────
-function renderPG(pgId) {
+function renderPG(pgId, sharedProjected) {
   const entry = pgRegistry.get(pgId);
   if (!entry) return;
   const { wrap, sets, trackedSet } = entry;
 
-  const projected = state.showProjected
-    ? computeProjected(sets, state.overrides)
-    : new Map();
+  const projected = sharedProjected !== undefined
+    ? sharedProjected
+    : (state.showProjected
+        ? computeProjected(Array.from(state.allSetsMap.values()), state.overrides)
+        : new Map());
 
   const old = wrap.querySelector('.bracket-svg');
   if (old) old.remove();
@@ -126,7 +158,10 @@ function renderPG(pgId) {
 }
 
 function rerenderAll() {
-  for (const pgId of pgRegistry.keys()) renderPG(pgId);
+  const globalProj = state.showProjected
+    ? computeProjected(Array.from(state.allSetsMap.values()), state.overrides)
+    : new Map();
+  for (const pgId of pgRegistry.keys()) renderPG(pgId, globalProj);
   const hasOv = Object.keys(state.overrides).length > 0;
   document.getElementById('btn-reset-overrides')?.classList.toggle('hidden', !hasOv);
 }
@@ -252,11 +287,50 @@ function drawBracket(container, sets, trackedSet, projected) {
   const L = buildLayout(sets);
   const { winners, losers, hasLosers } = L;
 
+  // ── Cross-phase pill computation ─────────────────────────────────────────
+  // rightPills: external sets (other PGs) reference sets in THIS PG → draw on right
+  // leftPills:  slots in THIS PG reference external sets             → draw on left
+  const rightPills = new Map(); // setId → [{label, isLoser}]
+  const leftPills  = new Map(); // setId → [{label, slotIdx}]
+
+  for (const [extId, extSet] of state.allSetsMap) {
+    if (L.setMap.has(extId)) continue;
+    const extPhase = extSet.phaseGroup?.phase?.name || '';
+    const extPG    = extSet.phaseGroup?.displayIdentifier || '';
+    const extBase  = `${extPhase} ${extPG}`.trim();
+
+    for (const slot of (extSet.slots || [])) {
+      const pstr = String(slot.prereqId || '');
+      if (!pstr || !L.setMap.has(pstr)) continue;
+      const refSet      = L.setMap.get(pstr);
+      const isLoserFeed = slot.prereqType === 'loser'
+        || ((refSet.round || 0) >= 0 && (extSet.round || 0) < 0);
+      if (!rightPills.has(pstr)) rightPills.set(pstr, []);
+      rightPills.get(pstr).push({ label: extBase + (isLoserFeed ? ' [L]' : ' [W]'), isLoser: isLoserFeed });
+    }
+  }
+
+  for (const set of sets) {
+    const sid = String(set.id);
+    for (const slot of (set.slots || [])) {
+      const pstr = String(slot.prereqId || '');
+      if (!pstr || L.setMap.has(pstr) || !state.allSetsMap.has(pstr)) continue;
+      const srcSet   = state.allSetsMap.get(pstr);
+      const srcPhase = srcSet.phaseGroup?.phase?.name || '';
+      const srcPG    = srcSet.phaseGroup?.displayIdentifier || '';
+      if (!leftPills.has(sid)) leftPills.set(sid, []);
+      leftPills.get(sid).push({ label: `${srcPhase} ${srcPG}`.trim(), slotIdx: slot.slotIndex ?? 0 });
+    }
+  }
+
+  const L_PAD = leftPills.size  > 0 ? PILL_W + 28 : 0;
+  const R_PAD = rightPills.size > 0 ? PILL_W + 24 : 0;
+
   const wSecH = winners.leafCount * ROW_GAP + HEADER_H + TOP_PAD;
   const lSecH = losers ? losers.leafCount * ROW_GAP + HEADER_H + TOP_PAD : 0;
   const lOff  = wSecH + SEC_GAP;
   const cols  = Math.max(winners.rounds.length, losers ? losers.rounds.length : 0);
-  const svgW  = cols * COL_STEP + CARD_W + 40;
+  const svgW  = L_PAD + cols * COL_STEP + CARD_W + 40 + R_PAD;
   const svgH  = wSecH + (hasLosers ? SEC_GAP + lSecH : 0) + 24;
 
   const svg = d3.select(container)
@@ -273,17 +347,17 @@ function drawBracket(container, sets, trackedSet, projected) {
   const labG   = g.append('g');
   const cardsG = g.append('g');
 
-  // Convert set id to card-centre pixel coords
+  // Convert set id to card-centre pixel coords (L_PAD offsets everything right)
   function cc(sid) {
     const s = L.setMap.get(String(sid));
     if (!s) return null;
     const r = s.round || 0;
     if (r >= 0) return {
-      x: (winners.colOf.get(r) ?? 0) * COL_STEP + CARD_W / 2,
+      x: L_PAD + (winners.colOf.get(r) ?? 0) * COL_STEP + CARD_W / 2,
       y: (winners.yPos.get(String(sid)) ?? 0) * ROW_GAP + HEADER_H + TOP_PAD,
     };
     return {
-      x: (losers.colOf.get(r) ?? 0) * COL_STEP + CARD_W / 2,
+      x: L_PAD + (losers.colOf.get(r) ?? 0) * COL_STEP + CARD_W / 2,
       y: (losers.yPos.get(String(sid)) ?? 0) * ROW_GAP + HEADER_H + TOP_PAD + lOff,
     };
   }
@@ -291,7 +365,7 @@ function drawBracket(container, sets, trackedSet, projected) {
   // ── Section markers ────────────────────────────────────────────────────────
   if (hasLosers) {
     for (const [txt, yo] of [['WINNERS BRACKET', 11], ['LOSERS BRACKET', lOff + 11]]) {
-      labG.append('text').attr('x', 6).attr('y', yo)
+      labG.append('text').attr('x', L_PAD + 6).attr('y', yo)
         .attr('font-size', 7.5).attr('fill', '#2e2e46')
         .attr('font-family', 'Segoe UI, system-ui, sans-serif')
         .attr('font-weight', '700').attr('letter-spacing', '0.12em').text(txt);
@@ -306,7 +380,7 @@ function drawBracket(container, sets, trackedSet, projected) {
   const hdrTopW = hasLosers ? 20 : 0;
   for (const [rnd, col] of winners.colOf) {
     labG.append('text')
-      .attr('x', col * COL_STEP + CARD_W / 2)
+      .attr('x', L_PAD + col * COL_STEP + CARD_W / 2)
       .attr('y', hdrTopW + HEADER_H - 6)
       .attr('text-anchor', 'middle').attr('font-size', 9.5)
       .attr('fill', '#484868')
@@ -317,7 +391,7 @@ function drawBracket(container, sets, trackedSet, projected) {
   if (losers) {
     for (const [rnd, col] of losers.colOf) {
       labG.append('text')
-        .attr('x', col * COL_STEP + CARD_W / 2)
+        .attr('x', L_PAD + col * COL_STEP + CARD_W / 2)
         .attr('y', lOff + HEADER_H - 6)
         .attr('text-anchor', 'middle').attr('font-size', 9.5)
         .attr('fill', '#484868')
@@ -364,6 +438,56 @@ function drawBracket(container, sets, trackedSet, projected) {
     const c   = cc(sid);
     if (!c) continue;
     drawCard(cardsG, set, c.x - CARD_W / 2, c.y - CARD_H / 2, trackedSet, projected, L.setMap);
+  }
+
+  // ── Right pills (outgoing to next phase/round) ─────────────────────────────
+  for (const [sid, pills] of rightPills) {
+    const c = cc(sid);
+    if (!c) continue;
+    for (const { label, isLoser } of pills) {
+      const lineY  = c.y + (isLoser ? SLOT_H / 2 : -SLOT_H / 2);
+      const fromX  = c.x + CARD_W / 2;
+      const pillX  = fromX + 10;
+      edgesG.append('path')
+        .attr('d', `M${fromX},${lineY} H${pillX}`)
+        .attr('fill', 'none').attr('stroke', '#252540')
+        .attr('stroke-width', 1).attr('stroke-dasharray', '5,3');
+      cardsG.append('rect')
+        .attr('x', pillX).attr('y', lineY - PILL_H / 2)
+        .attr('width', PILL_W).attr('height', PILL_H).attr('rx', PILL_H / 2)
+        .attr('fill', '#0b0b14').attr('stroke', '#1e1e30').attr('stroke-width', 0.75);
+      cardsG.append('text')
+        .attr('x', pillX + PILL_W / 2).attr('y', lineY + 4)
+        .attr('text-anchor', 'middle').attr('font-size', 9)
+        .attr('fill', '#3a3a5a')
+        .attr('font-family', 'Segoe UI, system-ui, sans-serif')
+        .text(label);
+    }
+  }
+
+  // ── Left pills (incoming from previous phase/round) ────────────────────────
+  for (const [sid, pills] of leftPills) {
+    const c = cc(sid);
+    if (!c) continue;
+    for (const { label, slotIdx } of pills) {
+      const lineY  = c.y - CARD_H / 2 + (slotIdx + 0.5) * SLOT_H;
+      const toX    = c.x - CARD_W / 2;
+      const pillX  = toX - 10 - PILL_W;
+      edgesG.append('path')
+        .attr('d', `M${pillX + PILL_W},${lineY} H${toX}`)
+        .attr('fill', 'none').attr('stroke', '#252540')
+        .attr('stroke-width', 1).attr('stroke-dasharray', '5,3');
+      cardsG.append('rect')
+        .attr('x', pillX).attr('y', lineY - PILL_H / 2)
+        .attr('width', PILL_W).attr('height', PILL_H).attr('rx', PILL_H / 2)
+        .attr('fill', '#0b0b14').attr('stroke', '#1e1e30').attr('stroke-width', 0.75);
+      cardsG.append('text')
+        .attr('x', pillX + PILL_W / 2).attr('y', lineY + 4)
+        .attr('text-anchor', 'middle').attr('font-size', 9)
+        .attr('fill', '#3a3a5a')
+        .attr('font-family', 'Segoe UI, system-ui, sans-serif')
+        .text(label);
+    }
   }
 
   // ── Initial fit ───────────────────────────────────────────────────────────
@@ -437,10 +561,17 @@ function drawSlotRow(card, idx, slot, set, trackedSet, projected, setMap) {
   const rowY      = idx * SLOT_H;
   const projKey   = `${sid}:${idx}`;
 
+  const isExternalFeed = !!(slot?.prereqId
+    && !setMap?.has(String(slot.prereqId))
+    && state.allSetsMap.has(String(slot.prereqId)));
   const actualEnt = slot?.entrant;
   const projEnt   = projected?.get(projKey) || null;
-  const entrant   = actualEnt || (state.showProjected ? projEnt : null);
-  const isProj    = !actualEnt && !!projEnt && state.showProjected;
+  const entrant   = (isExternalFeed && state.showProjected && projEnt)
+    ? projEnt
+    : actualEnt || (state.showProjected ? projEnt : null);
+  const isProj    = !actualEnt
+    ? !!(projEnt && state.showProjected)
+    : !!(isExternalFeed && state.showProjected && projEnt && String(projEnt.id) !== String(actualEnt.id));
 
   const eid     = String(entrant?.id || '');
   const tracked = eid && trackedSet.has(eid);
@@ -561,6 +692,10 @@ function openPicker(set, projected, setMap) {
     const sl = slots.find(s => (s.slotIndex ?? 0) === slotIdx) || slots[slotIdx];
     const actual = sl?.entrant;
     const proj   = projected?.get(`${sid}:${slotIdx}`);
+    const isExtFeed = !!(sl?.prereqId
+      && !setMap?.has(String(sl.prereqId))
+      && state.allSetsMap.has(String(sl.prereqId)));
+    if (isExtFeed && state.showProjected && proj) return proj;
     return actual || proj || null;
   }
 

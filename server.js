@@ -8,9 +8,16 @@ const { findDirectCollisions, getPlayerTimeline, simulateBracket } = require('./
 
 const app = express();
 app.use(express.json());
+// Disable caching for JS/CSS so the browser always picks up the latest code
+app.use((req, res, next) => {
+  if (req.path.match(/\.(js|css)$/)) {
+    res.set('Cache-Control', 'no-store');
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 let EVENT_SLUG = process.env.EVENT_SLUG
-  || 'tournament/lvl-up-expo-2026-1/event/tekken-8-5-000-prize-pool';
+  || 'tournament/evo-japan-2026-presented-by-levtech/event/evo-japan-2026-tekken-8';
 
 // Start with 2 entrants; POST /api/config to update
 let TRACKED_IDS = [22318059, 22785074, 22264159, 22927499];
@@ -79,12 +86,29 @@ app.get('/api/dashboard', async (req, res) => {
       timelines[id] = getPlayerTimeline(sets, id);
     }
 
-    // Only fetch brackets for pools with UPCOMING sets — not historical completed pools.
-    // Using seeds would pull in Round 1 / Round 2 brackets and pollute the graph.
+    // Collect phase group IDs from:
+    // 1. Upcoming sets (current active pools)
+    // 2. Player seeds across ALL phases (Round 2, Round 3, etc.)
     const phaseGroupIds = new Set();
     for (const set of sets) {
       if (set?.phaseGroup?.id && !set.completedAt) {
         phaseGroupIds.add(String(set.phaseGroup.id));
+      }
+    }
+    for (const player of players) {
+      for (const seed of (player?.seeds || [])) {
+        if (seed?.phaseGroup?.id) phaseGroupIds.add(String(seed.phaseGroup.id));
+      }
+    }
+
+    // For Phase 2, 3, Finals, etc.: fetch ALL groups if the phase is small (≤ 16 groups).
+    // Phase 1 pools can have 50–100+ groups (too many) — we only use tracked player seeds there.
+    // Phase 2+ typically has 8–16 groups, and Phase 3/Finals has 1–2, so fetching all
+    // gives the complete multi-round bracket picture without excessive API calls.
+    for (const phase of (event.phases || [])) {
+      const pgs = phase.phaseGroups?.nodes || [];
+      if (pgs.length <= 16) {
+        for (const pg of pgs) phaseGroupIds.add(String(pg.id));
       }
     }
 
@@ -158,6 +182,58 @@ app.post('/api/config', (req, res) => {
 
 app.get('/api/status', (req, res) => {
   res.json({ trackedIds: TRACKED_IDS, cacheEntries: cacheSize(), eventSlug: EVENT_SLUG });
+});
+
+// Debug: show bracket graph size + opponent preview per tracked player
+app.get('/api/debug/opponents', async (req, res) => {
+  try {
+    const event   = await getEvent(EVENT_SLUG);
+    const players = await Promise.all(TRACKED_IDS.map(id => getEntrant(id)));
+    const sets    = await getSetsForEntrants(event.id, TRACKED_IDS);
+
+    const phaseGroupIds = new Set();
+    for (const s of sets) if (s?.phaseGroup?.id) phaseGroupIds.add(String(s.phaseGroup.id));
+    for (const p of players) for (const seed of (p?.seeds || [])) if (seed?.phaseGroup?.id) phaseGroupIds.add(String(seed.phaseGroup.id));
+
+    const brackets = {};
+    await Promise.all(Array.from(phaseGroupIds).map(async pgId => {
+      try { brackets[pgId] = await getPhaseGroupBracket(pgId); } catch { /* skip */ }
+    }));
+
+    // For each tracked player, trace their next set's opponent via prereqId
+    const out = [];
+    for (const player of players) {
+      if (!player) continue;
+      const pid = String(player.id);
+      let nextSet = null;
+      let oppInfo = 'not found';
+
+      // Find the set where this player appears in any pool bracket
+      for (const [, pgSets] of Object.entries(brackets)) {
+        for (const s of pgSets) {
+          const mySlot = (s.slots || []).find(sl => sl.entrant && String(sl.entrant.id) === pid);
+          if (!mySlot) continue;
+          const oppSlot = (s.slots || []).find(sl => sl !== mySlot);
+          if (oppSlot?.entrant) { oppInfo = oppSlot.entrant.name; nextSet = s.id; break; }
+          if (oppSlot?.prereqId) {
+            const allSets = new Map();
+            for (const [, pgS] of Object.entries(brackets)) for (const ss of pgS) allSets.set(String(ss.id), ss);
+            const feeder = allSets.get(String(oppSlot.prereqId));
+            const names = (feeder?.slots || []).map(sl => sl.entrant?.name).filter(Boolean);
+            oppInfo = names.length ? `W of ${names.join(' vs ')}` : `prereq=${oppSlot.prereqId} (not in graph)`;
+            nextSet = s.id;
+          }
+          if (nextSet) break;
+        }
+        if (nextSet) break;
+      }
+      out.push({ player: player.name, setId: nextSet, opponent: oppInfo });
+    }
+
+    res.json({ bracketPoolCount: Object.keys(brackets).length, opponents: out });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
