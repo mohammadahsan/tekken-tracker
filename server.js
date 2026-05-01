@@ -20,7 +20,7 @@ let EVENT_SLUG = process.env.EVENT_SLUG
   || 'tournament/evo-japan-2026-presented-by-levtech/event/evo-japan-2026-tekken-8';
 
 // Start with 2 entrants; POST /api/config to update
-let TRACKED_IDS = [22318059, 22785074, 22264159, 22927499];
+let TRACKED_IDS = [22927499, 22318059, 22785074, 22264159, 22920324, 23216301, 22912564, 23215432, 102331399];
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
