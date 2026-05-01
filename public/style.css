@@ -113,6 +113,14 @@ button:hover { opacity: 0.8; }
 }
 .btn-ghost:hover { color: var(--text); border-color: var(--muted); opacity: 1; }
 
+.btn-reset {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.btn-reset:hover { color: var(--accent2); border-color: var(--accent2); opacity: 1; }
+
 /* ── Error banner ───────────────────────────────────────────── */
 .error-banner {
   background: rgba(230, 57, 70, 0.15);

@@ -293,6 +293,13 @@ function setupListeners() {
     await loadData();
   });
 
+  document.getElementById('btn-reset').addEventListener('click', async () => {
+    if (!confirm('Reset to default players?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    await apiRefresh();
+    await loadData();
+  });
+
   document.getElementById('search-input').addEventListener('input', debounce(handleSearch, 300));
 
   document.getElementById('btn-search').addEventListener('click', handleSearch);
