@@ -15,10 +15,6 @@
     </div>
     <div class="header-right">
       <span id="last-updated" class="muted"></span>
-      <nav class="page-tabs">
-        <a href="index.html" class="page-tab active">Dashboard</a>
-        <a href="brackets.html" class="page-tab">Brackets</a>
-      </nav>
       <label class="toggle-wrap">
         <input type="checkbox" id="auto-refresh">
         <span>Auto (60s)</span>
@@ -48,38 +44,15 @@
       </div>
     </section>
 
-    <!-- Timelines -->
+    <!-- Matches -->
     <section>
-      <h2 class="section-label">Match Timelines
-        <span class="hint">Click any projected match to override winner</span>
-      </h2>
-      <div id="timelines-container">
+      <h2 class="section-label">Matches</h2>
+      <div id="matches-container">
         <div class="skeleton-row tall"></div>
       </div>
     </section>
 
-    <!-- Collisions -->
-    <section>
-      <h2 class="section-label">
-        Player Collisions
-        <button id="btn-reset-overrides" class="btn-ghost hidden">Reset Overrides</button>
-      </h2>
-      <div id="collisions-container">
-        <p class="muted">Loading...</p>
-      </div>
-    </section>
-
   </main>
-
-  <!-- Override modal -->
-  <div id="override-modal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-backdrop" id="modal-backdrop"></div>
-    <div class="modal-box">
-      <p class="modal-label">Override: who wins?</p>
-      <div id="modal-buttons" class="modal-buttons"></div>
-      <button class="btn-ghost modal-clear" id="modal-clear">Clear override</button>
-    </div>
-  </div>
 
   <script src="app.js"></script>
 </body>
