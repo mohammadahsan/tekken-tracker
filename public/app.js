@@ -210,8 +210,10 @@ function renderMatches() {
       matchesHtml += completedSets.map(s => {
         const opponent = getOpponentName(s, id);
         const result = String(s.winnerId) === id ? 'W' : 'L';
-        const round = s.fullRoundText || `Round ${s.round || '?'}`;
-        return `<div class="match-card history result-${result}"><div class="card-round">${esc(round)}</div><div class="card-result">${result}</div><div class="card-opp">${esc(opponent)}</div></div>`;
+        const phaseName = s.phaseGroup?.phase?.name || '';
+        const roundText = s.fullRoundText || `Round ${s.round || '?'}`;
+        const displayRound = phaseName ? `${phaseName} - ${roundText}` : roundText;
+        return `<div class="match-card history result-${result}"><div class="card-round">${esc(displayRound)}</div><div class="card-result">${result}</div><div class="card-opp">${esc(opponent)}</div></div>`;
       }).join('');
     }
 
@@ -220,11 +222,13 @@ function renderMatches() {
       const opponent = getOpponentName(upcomingSet, id);
       const setPool = upcomingSet.phaseGroup?.displayIdentifier;
       const time = fmtTime(upcomingSet.startAt);
-      const round = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
+      const phaseName = upcomingSet.phaseGroup?.phase?.name || '';
+      const roundText = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
+      const displayRound = phaseName ? `${phaseName} - ${roundText}` : roundText;
       matchesHtml += `
         <div class="match-card next">
           <div class="card-label">NEXT</div>
-          <div class="card-round">${esc(round)}</div>
+          <div class="card-round">${esc(displayRound)}</div>
           <div class="card-vs">vs</div>
           <div class="card-opp"><strong>${esc(opponent)}</strong></div>
           ${setPool ? `<div class="card-pool">Pool ${esc(setPool)}</div>` : ''}
