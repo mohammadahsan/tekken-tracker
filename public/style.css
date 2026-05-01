@@ -339,20 +339,64 @@ main {
   gap: 16px;
 }
 
-.match-section {
+.completed-rounds {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin-bottom: 8px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
-.section-title {
+.rounds-label {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.rounds-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.round-tag {
+  font-size: 0.7rem;
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--win);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.history-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.next-box {
+  background: var(--surface2);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.box-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
 }
 
 .match-history {
@@ -363,44 +407,49 @@ main {
 
 .history-item {
   font-size: 0.82rem;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  background: var(--surface);
   border-left: 3px solid var(--border);
   border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .history-item.result-W {
-  background: rgba(34, 197, 94, 0.1);
+  background: rgba(34, 197, 94, 0.12);
   border-left-color: var(--win);
   color: var(--win);
 }
 
 .history-item.result-L {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.12);
   border-left-color: var(--loss);
   color: var(--loss);
 }
 
 .next-match {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--accent);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .match-round {
-  font-size: 0.72rem;
-  color: var(--muted);
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .match-vs {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  color: var(--text);
 }
 
 .match-pool {
@@ -408,10 +457,14 @@ main {
   color: var(--accent);
   font-weight: 600;
   text-transform: uppercase;
+  background: rgba(255, 98, 0, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  width: fit-content;
 }
 
 .match-time {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: var(--text);
   font-weight: 500;
 }

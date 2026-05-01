@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let EVENT_SLUG = process.env.EVENT_SLUG
   || 'tournament/evo-japan-2026-presented-by-levtech/event/evo-japan-2026-tekken-8';
 
-const DEFAULT_IDS = [22927499, 22318059, 22785074, 22264159, 22920324, 23216301, 22912564, 23215432];
+const DEFAULT_IDS = [22927499, 22318059, 22785074, 22264159, 22920324, 23216301, 22912564, 23215432, 22280779];
 let TRACKED_IDS = [...DEFAULT_IDS];
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

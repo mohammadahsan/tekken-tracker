@@ -150,12 +150,25 @@ function renderPlayers() {
   }).join('');
 }
 
+function getCompletedRounds(sets) {
+  const completed = new Set();
+  for (const s of sets) {
+    if (s.completedAt && s.fullRoundText) {
+      completed.add(s.fullRoundText);
+    }
+  }
+  return Array.from(completed).sort();
+}
+
 function renderMatches() {
   const container = document.getElementById('matches-container');
   if (!state.players.length) {
     container.innerHTML = '<p class="muted">No players loaded.</p>';
     return;
   }
+
+  // Get global completed rounds from all sets
+  const globalCompletedRounds = getCompletedRounds(state.sets);
 
   container.innerHTML = state.players.map(player => {
     if (!player) return '';
@@ -192,14 +205,19 @@ function renderMatches() {
         </div>
         <div class="matches-content">`;
 
+    // Show completed rounds status
+    if (globalCompletedRounds.length > 0) {
+      html += `<div class="completed-rounds"><div class="rounds-label">Completed:</div><div class="rounds-list">${globalCompletedRounds.map(r => `<span class="round-tag">${esc(r)} ✓</span>`).join('')}</div></div>`;
+    }
+
     // Show match history
     if (completedSets.length > 0) {
-      html += `<div class="match-section"><div class="section-title">Match History</div><div class="match-history">`;
+      html += `<div class="history-box"><div class="box-title">📋 Match History</div><div class="match-history">`;
       html += completedSets.map(s => {
         const opponent = getOpponentName(s, id);
         const result = String(s.winnerId) === id ? 'W' : 'L';
         const round = s.fullRoundText || `Round ${s.round || '?'}`;
-        return `<div class="history-item result-${result}">${esc(round)}: ${result} vs ${esc(opponent)}</div>`;
+        return `<div class="history-item result-${result}">${esc(round)}: <strong>${result}</strong> vs ${esc(opponent)}</div>`;
       }).join('');
       html += `</div></div>`;
     }
@@ -211,13 +229,13 @@ function renderMatches() {
       const time = fmtTime(upcomingSet.startAt);
       const round = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
       html += `
-        <div class="match-section">
-          <div class="section-title">Next Match</div>
+        <div class="next-box">
+          <div class="box-title">⏭️ Next Match</div>
           <div class="next-match">
             <div class="match-round">${esc(round)}</div>
             <div class="match-vs">vs <strong>${esc(opponent)}</strong></div>
             ${setPool ? `<div class="match-pool">Pool ${esc(setPool)}</div>` : ''}
-            <div class="match-time">${time || 'TBD'}</div>
+            <div class="match-time">🕐 ${time || 'TBD'}</div>
           </div>
         </div>`;
     }
