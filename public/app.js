@@ -39,6 +39,10 @@ async function apiSearch(q) {
   return apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
 }
 
+async function apiReset() {
+  return apiFetch('/api/reset', { method: 'POST' });
+}
+
 // ─── Tracked ID persistence ───────────────────────────────────────────────────
 function loadStoredIds() {
   try {
@@ -157,43 +161,69 @@ function renderMatches() {
     if (!player) return '';
     const id  = String(player.id);
     const tag = playerTag(player);
+    const seed = player.seeds?.[0]?.seedNum;
+    const pool = player.seeds?.[0]?.phaseGroup?.displayIdentifier;
 
     const playerSets = getPlayerSets(id);
 
     if (!playerSets.length) {
       return `
-        <div class="matches-row">
-          <div class="matches-player">🇵🇰 ${esc(tag)}</div>
-          <div class="matches-list"><span class="muted">No matches yet</span></div>
+        <div class="player-section">
+          <div class="player-header">
+            <div class="player-name">🇵🇰 ${esc(tag)}</div>
+            ${seed ? `<div class="player-seed">Seed #${seed}</div>` : ''}
+            ${pool ? `<div class="player-pool">Pool ${esc(pool)}</div>` : ''}
+          </div>
+          <div class="matches-content">
+            <p class="muted">No matches yet</p>
+          </div>
         </div>`;
     }
 
-    const cards = playerSets.map(s => {
-      const opponent = getOpponentName(s, id);
-      const pool = s.phaseGroup?.displayIdentifier;
-      const time = fmtTime(s.startAt || s.completedAt);
-      const round = s.fullRoundText || `Round ${s.round || '?'}`;
-      const status = s.completedAt
-        ? (String(s.winnerId) === id ? 'W' : 'L')
-        : 'Upcoming';
+    const upcomingSet = playerSets.find(s => !s.completedAt);
+    const completedSets = playerSets.filter(s => s.completedAt);
 
-      return `
-        <div class="match-card match-${status === 'W' ? 'win' : status === 'L' ? 'loss' : 'upcoming'}">
-          <div class="match-round">${esc(round)}</div>
-          <div class="match-opponent">vs ${esc(opponent)}</div>
-          ${pool ? `<div class="match-pool">Pool ${esc(pool)}</div>` : ''}
-          <div class="match-footer">
-            <span class="match-time">${time || 'TBD'}</span>
-            <span class="match-status">${status}</span>
+    let html = `
+      <div class="player-section">
+        <div class="player-header">
+          <div class="player-name">🇵🇰 ${esc(tag)}</div>
+          ${seed ? `<div class="player-seed">Seed #${seed}</div>` : ''}
+          ${pool ? `<div class="player-pool">Pool ${esc(pool)}</div>` : ''}
+        </div>
+        <div class="matches-content">`;
+
+    // Show match history
+    if (completedSets.length > 0) {
+      html += `<div class="match-section"><div class="section-title">Match History</div><div class="match-history">`;
+      html += completedSets.map(s => {
+        const opponent = getOpponentName(s, id);
+        const result = String(s.winnerId) === id ? 'W' : 'L';
+        const round = s.fullRoundText || `Round ${s.round || '?'}`;
+        return `<div class="history-item result-${result}">${esc(round)}: ${result} vs ${esc(opponent)}</div>`;
+      }).join('');
+      html += `</div></div>`;
+    }
+
+    // Show next match
+    if (upcomingSet) {
+      const opponent = getOpponentName(upcomingSet, id);
+      const setPool = upcomingSet.phaseGroup?.displayIdentifier;
+      const time = fmtTime(upcomingSet.startAt);
+      const round = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
+      html += `
+        <div class="match-section">
+          <div class="section-title">Next Match</div>
+          <div class="next-match">
+            <div class="match-round">${esc(round)}</div>
+            <div class="match-vs">vs <strong>${esc(opponent)}</strong></div>
+            ${setPool ? `<div class="match-pool">Pool ${esc(setPool)}</div>` : ''}
+            <div class="match-time">${time || 'TBD'}</div>
           </div>
         </div>`;
-    }).join('');
+    }
 
-    return `
-      <div class="matches-row">
-        <div class="matches-player">🇵🇰 ${esc(tag)}</div>
-        <div class="matches-list">${cards}</div>
-      </div>`;
+    html += `</div></div>`;
+    return html;
   }).join('');
 }
 
@@ -296,7 +326,7 @@ function setupListeners() {
   document.getElementById('btn-reset').addEventListener('click', async () => {
     if (!confirm('Reset to default players?')) return;
     localStorage.removeItem(STORAGE_KEY);
-    await apiRefresh();
+    await apiReset();
     await loadData();
   });
 
