@@ -181,13 +181,15 @@ function renderMatches() {
 
     if (!playerSets.length) {
       return `
-        <div class="player-section">
-          <div class="player-header">
+        <div class="player-row">
+          <div class="player-info">
             <div class="player-name">🇵🇰 ${esc(tag)}</div>
-            ${seed ? `<div class="player-seed">Seed #${seed}</div>` : ''}
-            ${pool ? `<div class="player-pool">Pool ${esc(pool)}</div>` : ''}
+            <div class="player-badges">
+              ${seed ? `<span class="player-seed">Seed #${seed}</span>` : ''}
+              ${pool ? `<span class="player-pool">Pool ${esc(pool)}</span>` : ''}
+            </div>
           </div>
-          <div class="matches-content">
+          <div class="matches-scroll">
             <p class="muted">No matches yet</p>
           </div>
         </div>`;
@@ -196,52 +198,51 @@ function renderMatches() {
     const upcomingSet = playerSets.find(s => !s.completedAt);
     const completedSets = playerSets.filter(s => s.completedAt);
 
-    let html = `
-      <div class="player-section">
-        <div class="player-header">
-          <div class="player-name">🇵🇰 ${esc(tag)}</div>
-          ${seed ? `<div class="player-seed">Seed #${seed}</div>` : ''}
-          ${pool ? `<div class="player-pool">Pool ${esc(pool)}</div>` : ''}
-        </div>
-        <div class="matches-content">`;
+    let matchesHtml = '';
 
     // Show completed rounds status
     if (globalCompletedRounds.length > 0) {
-      html += `<div class="completed-rounds"><div class="rounds-label">Completed:</div><div class="rounds-list">${globalCompletedRounds.map(r => `<span class="round-tag">${esc(r)} ✓</span>`).join('')}</div></div>`;
+      matchesHtml += `<div class="completed-rounds-bar">${globalCompletedRounds.map(r => `<span class="round-tag">${esc(r)} ✓</span>`).join('')}</div>`;
     }
 
-    // Show match history
+    // Show match history cards
     if (completedSets.length > 0) {
-      html += `<div class="history-box"><div class="box-title">📋 Match History</div><div class="match-history">`;
-      html += completedSets.map(s => {
+      matchesHtml += completedSets.map(s => {
         const opponent = getOpponentName(s, id);
         const result = String(s.winnerId) === id ? 'W' : 'L';
         const round = s.fullRoundText || `Round ${s.round || '?'}`;
-        return `<div class="history-item result-${result}">${esc(round)}: <strong>${result}</strong> vs ${esc(opponent)}</div>`;
+        return `<div class="match-card history result-${result}"><div class="card-round">${esc(round)}</div><div class="card-result">${result}</div><div class="card-opp">${esc(opponent)}</div></div>`;
       }).join('');
-      html += `</div></div>`;
     }
 
-    // Show next match
+    // Show next match card
     if (upcomingSet) {
       const opponent = getOpponentName(upcomingSet, id);
       const setPool = upcomingSet.phaseGroup?.displayIdentifier;
       const time = fmtTime(upcomingSet.startAt);
       const round = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
-      html += `
-        <div class="next-box">
-          <div class="box-title">⏭️ Next Match</div>
-          <div class="next-match">
-            <div class="match-round">${esc(round)}</div>
-            <div class="match-vs">vs <strong>${esc(opponent)}</strong></div>
-            ${setPool ? `<div class="match-pool">Pool ${esc(setPool)}</div>` : ''}
-            <div class="match-time">🕐 ${time || 'TBD'}</div>
-          </div>
+      matchesHtml += `
+        <div class="match-card next">
+          <div class="card-label">NEXT</div>
+          <div class="card-round">${esc(round)}</div>
+          <div class="card-vs">vs</div>
+          <div class="card-opp"><strong>${esc(opponent)}</strong></div>
+          ${setPool ? `<div class="card-pool">Pool ${esc(setPool)}</div>` : ''}
+          <div class="card-time">${time || 'TBD'}</div>
         </div>`;
     }
 
-    html += `</div></div>`;
-    return html;
+    return `
+      <div class="player-row">
+        <div class="player-info">
+          <div class="player-name">🇵🇰 ${esc(tag)}</div>
+          <div class="player-badges">
+            ${seed ? `<span class="player-seed">Seed #${seed}</span>` : ''}
+            ${pool ? `<span class="player-pool">Pool ${esc(pool)}</span>` : ''}
+          </div>
+        </div>
+        <div class="matches-scroll">${matchesHtml}</div>
+      </div>`;
   }).join('');
 }
 
