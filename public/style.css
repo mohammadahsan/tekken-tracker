@@ -395,6 +395,37 @@ main {
   background: rgba(255, 98, 0, 0.08);
 }
 
+.match-card.collision {
+  border-color: var(--accent2);
+  box-shadow: 0 0 10px rgba(230, 57, 70, 0.3);
+}
+
+.match-card.collision.result-W,
+.match-card.collision.result-L {
+  border-left-color: var(--accent2);
+}
+
+.match-card.next.collision {
+  border-color: var(--accent2);
+  background: rgba(230, 57, 70, 0.12);
+}
+
+.match-card.loser-bracket {
+  opacity: 0.8;
+}
+
+.collision-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent2);
+  background: rgba(230, 57, 70, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 2px;
+}
+
 .card-label {
   font-size: 0.65rem;
   font-weight: 700;

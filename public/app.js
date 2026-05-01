@@ -123,6 +123,21 @@ function getOpponentName(set, playerId) {
   return opponent?.entrant?.name || 'TBD';
 }
 
+// Check if a match is between two tracked players (collision)
+function isCollision(set, trackedIds) {
+  const trackedSet = new Set(trackedIds.map(String));
+  const entrants = (set.slots || [])
+    .filter(sl => sl.entrant)
+    .map(sl => String(sl.entrant.id));
+  return entrants.length === 2 && entrants.every(id => trackedSet.has(id));
+}
+
+// Check if match is in loser bracket
+function isLoserBracket(set) {
+  const round = set.round || 0;
+  return round < 0;
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderPlayers() {
   const grid = document.getElementById('players-grid');
@@ -213,7 +228,10 @@ function renderMatches() {
         const phaseName = s.phaseGroup?.phase?.name || '';
         const roundText = s.fullRoundText || `Round ${s.round || '?'}`;
         const displayRound = phaseName ? `${phaseName} - ${roundText}` : roundText;
-        return `<div class="match-card history result-${result}"><div class="card-round">${esc(displayRound)}</div><div class="card-result">${result}</div><div class="card-opp">${esc(opponent)}</div></div>`;
+        const collision = isCollision(s, state.trackedIds);
+        const loser = isLoserBracket(s);
+        const badges = `${loser ? ' 🔴' : ''}${collision ? ' ⚔️' : ''}`;
+        return `<div class="match-card history result-${result}${collision ? ' collision' : ''}${loser ? ' loser-bracket' : ''}"><div class="card-round">${esc(displayRound)}${badges}</div><div class="card-result">${result}</div><div class="card-opp">${esc(opponent)}</div></div>`;
       }).join('');
     }
 
@@ -225,12 +243,16 @@ function renderMatches() {
       const phaseName = upcomingSet.phaseGroup?.phase?.name || '';
       const roundText = upcomingSet.fullRoundText || `Round ${upcomingSet.round || '?'}`;
       const displayRound = phaseName ? `${phaseName} - ${roundText}` : roundText;
+      const collision = isCollision(upcomingSet, state.trackedIds);
+      const loser = isLoserBracket(upcomingSet);
+      const badges = `${loser ? ' 🔴' : ''}${collision ? ' ⚔️' : ''}`;
       matchesHtml += `
-        <div class="match-card next">
+        <div class="match-card next${collision ? ' collision' : ''}${loser ? ' loser-bracket' : ''}">
           <div class="card-label">NEXT</div>
-          <div class="card-round">${esc(displayRound)}</div>
+          <div class="card-round">${esc(displayRound)}${badges}</div>
           <div class="card-vs">vs</div>
           <div class="card-opp"><strong>${esc(opponent)}</strong></div>
+          ${collision ? '<div class="collision-badge">COLLISION</div>' : ''}
           ${setPool ? `<div class="card-pool">Pool ${esc(setPool)}</div>` : ''}
           <div class="card-time">${time || 'TBD'}</div>
         </div>`;
