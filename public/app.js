@@ -141,6 +141,8 @@ function isLoserBracket(set) {
 // ─── Render ───────────────────────────────────────────────────────────────────
 function renderPlayers() {
   const grid = document.getElementById('players-grid');
+  if (!grid) return; // Element doesn't exist
+
   if (!state.players.length) {
     grid.innerHTML = '<p class="muted">No player data returned.</p>';
     return;
@@ -177,6 +179,8 @@ function getCompletedRounds(sets) {
 
 function renderMatches() {
   const container = document.getElementById('matches-container');
+  if (!container) return; // Element doesn't exist
+
   if (!state.players.length) {
     container.innerHTML = '<p class="muted">No players loaded.</p>';
     return;
@@ -274,6 +278,8 @@ function renderMatches() {
 
 function renderEventMeta() {
   const meta = document.getElementById('event-meta');
+  if (!meta) return; // Element doesn't exist
+
   if (!state.event) {
     meta.innerHTML = '';
     return;
@@ -285,6 +291,8 @@ function renderEventMeta() {
 
 function renderLastUpdated() {
   const el = document.getElementById('last-updated');
+  if (!el) return; // Element doesn't exist
+
   if (!state.lastUpdated) {
     el.innerHTML = '';
     return;
@@ -309,7 +317,11 @@ async function loadData() {
     state.sets = data.sets;
     state.trackedIds = data.trackedIds;
     state.lastUpdated = Date.now();
-    await render();
+    renderEventMeta();
+    renderPlayers();
+    renderMatches();
+    renderBracket();
+    renderLastUpdated();
   } catch (e) {
     showError(`Failed to load data: ${e.message}`);
   }
@@ -361,6 +373,84 @@ async function handleSearch() {
   }
 }
 
+// ─── Bracket Visualization ───────────────────────────────────────────────────
+function getMatchesForBracket() {
+  const trackedSet = new Set(state.trackedIds.map(String));
+  const relevant = state.sets.filter(s => {
+    const entrants = (s.slots || []).filter(sl => sl.entrant).map(sl => String(sl.entrant.id));
+    return entrants.some(id => trackedSet.has(id));
+  });
+  return relevant;
+}
+
+function groupMatchesByPhase(matches) {
+  const phaseOrder = { 'Round1': 0, 'Round2': 1, 'Round3': 2, 'Semifinals': 3, 'Finals': 4 };
+  const grouped = {};
+  for (const m of matches) {
+    const phase = m.phaseGroup?.phase?.name || 'Unknown';
+    if (!grouped[phase]) grouped[phase] = [];
+    grouped[phase].push(m);
+  }
+  return Object.entries(grouped).sort((a, b) => (phaseOrder[a[0]] ?? 999) - (phaseOrder[b[0]] ?? 999));
+}
+
+function renderBracket() {
+  const container = document.getElementById('bracket-container');
+  if (!container) return; // Element doesn't exist
+
+  if (!state.sets || state.sets.length === 0) {
+    container.innerHTML = '<p class="muted">No matches to display.</p>';
+    return;
+  }
+
+  const visualizer = new BracketVisualizer(state.sets, state.trackedIds, state.players);
+  visualizer.renderSummary('bracket-container');
+}
+
+function showMatchDetail(setId) {
+  const set = state.sets.find(s => String(s.id) === String(setId));
+  if (!set) return;
+
+  const p1 = set.slots?.[0]?.entrant;
+  const p2 = set.slots?.[1]?.entrant;
+  const pool = set.phaseGroup?.displayIdentifier;
+  const phase = set.phaseGroup?.phase?.name;
+  const time = fmtTime(set.startAt);
+
+  let content = `
+    <h3 style="margin-bottom: 12px; color: var(--accent);">${esc(phase)} - ${esc(pool)}</h3>
+    <div class="detail-row">
+      <span class="detail-label">Player 1</span>
+      <span class="detail-value">${esc(p1?.name || 'TBD')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Player 2</span>
+      <span class="detail-value">${esc(p2?.name || 'TBD')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Time</span>
+      <span class="detail-value">${time || 'TBD'}</span>
+    </div>`;
+
+  if (set.completedAt && set.winnerId) {
+    const winner = [p1, p2].find(p => p && p.id === set.winnerId);
+    content += `
+    <div class="detail-row">
+      <span class="detail-label">Result</span>
+      <span class="detail-value" style="color: var(--win);">✓ ${esc(winner?.name || '?')} won</span>
+    </div>`;
+  }
+
+  document.getElementById('match-detail-content').innerHTML = content;
+  document.getElementById('match-detail-modal').classList.remove('hidden');
+}
+
+// ─── View Management ──────────────────────────────────────────────────────────
+function switchView(view) {
+  // Single view now - just render bracket
+  renderBracket();
+}
+
 // ─── Event listeners ──────────────────────────────────────────────────────────
 function setupListeners() {
   document.getElementById('btn-refresh').addEventListener('click', async () => {
@@ -395,6 +485,30 @@ function setupListeners() {
     } else {
       clearInterval(state.refreshTimer);
     }
+  });
+
+  // Tab navigation
+  document.querySelectorAll('.page-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchView(tab.dataset.view);
+    });
+  });
+
+  // Match detail modal
+  document.addEventListener('click', e => {
+    if (e.target.closest('.bracket-match')) {
+      const setId = e.target.closest('.bracket-match').dataset.setId;
+      showMatchDetail(setId);
+    }
+  });
+
+  document.getElementById('detail-backdrop')?.addEventListener('click', () => {
+    document.getElementById('match-detail-modal').classList.add('hidden');
+  });
+
+  document.getElementById('modal-close')?.addEventListener('click', () => {
+    document.getElementById('match-detail-modal').classList.add('hidden');
   });
 }
 

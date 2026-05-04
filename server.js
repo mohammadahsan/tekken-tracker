@@ -3,7 +3,7 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const { getEvent, getEntrant, getSetsForEntrants, searchEntrants, clearCache, cacheSize } = require('./src/startgg');
+const { getEvent, getEntrant, getSetsForEntrants, getPhaseGroupBracket, searchEntrants, clearCache, cacheSize } = require('./src/startgg');
 
 const app = express();
 app.use(express.json());
@@ -113,6 +113,18 @@ app.post('/api/reset', (req, res) => {
   clearCache();
   res.json({ ok: true, trackedIds: TRACKED_IDS });
 });
+
+// Get complete pool bracket data
+app.get('/api/pool/:poolId', async (req, res) => {
+  try {
+    const poolId = req.params.poolId;
+    const bracket = await getPhaseGroupBracket(poolId);
+    res.json({ bracket, poolId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

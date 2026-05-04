@@ -15,6 +15,8 @@
     </div>
     <div class="header-right">
       <span id="last-updated" class="muted"></span>
+      <nav class="page-tabs">
+      </nav>
       <label class="toggle-wrap">
         <input type="checkbox" id="auto-refresh">
         <span>Auto (60s)</span>
@@ -26,8 +28,16 @@
 
   <div id="error-banner" class="error-banner hidden"></div>
 
-  <main>
+  <!-- Detail modal for match info -->
+  <div id="match-detail-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="detail-backdrop"></div>
+    <div class="modal-box">
+      <div id="match-detail-content"></div>
+      <button class="btn-ghost modal-close" id="modal-close">Close</button>
+    </div>
+  </div>
 
+  <main>
     <!-- Players row -->
     <section>
       <h2 class="section-label">Tracked Players</h2>
@@ -45,16 +55,18 @@
       </div>
     </section>
 
-    <!-- Matches -->
+    <!-- Complete Bracket -->
     <section>
-      <h2 class="section-label">Matches</h2>
-      <div id="matches-container">
-        <div class="skeleton-row tall"></div>
+      <h2 class="section-label">Tournament Bracket</h2>
+      <div id="bracket-container">
+        <div class="skeleton-row"></div>
       </div>
     </section>
-
   </main>
 
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="bracket-visual.js"></script>
+  <script src="bracket-render.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

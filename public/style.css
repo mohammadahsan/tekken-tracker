@@ -474,6 +474,288 @@ main {
 
 
 
+/* ── Modal / Dialog ─────────────────────────────────────────── */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.modal-box {
+  position: relative;
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 24px;
+  min-width: 320px;
+  max-width: 500px;
+  z-index: 1;
+}
+
+.modal-close {
+  margin-top: 16px;
+  width: 100%;
+}
+
+#match-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── Bracket View ───────────────────────────────────────────── */
+#bracket-view {
+  padding: 28px 24px;
+}
+
+.phase-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.phase-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(255, 98, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.phase-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.phase-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.phase-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 3px;
+}
+
+.phase-badge.complete {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--win);
+}
+
+.phase-badge.in-progress {
+  background: rgba(255, 98, 0, 0.15);
+  color: var(--accent);
+}
+
+.phase-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.stat.progression .stat-value {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+/* ── Pool Bracket Modal ───────────────────────────────────────── */
+.pool-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.pool-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.pool-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pool-match {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pool-match.has-tracked {
+  border: 2px solid var(--accent);
+  background: rgba(255, 98, 0, 0.08);
+}
+
+.match-slot {
+  flex: 1;
+  padding: 8px;
+  background: var(--surface);
+  border-radius: 3px;
+  font-size: 0.82rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.match-slot.tracked {
+  background: rgba(255, 98, 0, 0.15);
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.match-slot span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-slot .result {
+  font-weight: 700;
+  color: var(--win);
+  min-width: 20px;
+  text-align: right;
+}
+
+.match-vs {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.match-time {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+/* ── Bracket Visualization ────────────────────────────────────────── */
+.bracket-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.bracket-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bracket-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 0;
+}
+
+.bracket-canvas-container {
+  background: var(--surface2);
+  border-radius: var(--radius);
+  padding: 10px;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.bracket-svg {
+  display: block;
+}
+
+.bracket-box {
+  cursor: pointer;
+  transition: fill 0.15s;
+}
+
+.bracket-box:hover {
+  fill: rgba(255, 98, 0, 0.15) !important;
+}
+
+.bracket-box.tracked {
+  filter: drop-shadow(0 0 6px rgba(255, 98, 0, 0.4));
+}
+
 /* ── Skeleton / loading ─────────────────────────────────────── */
 .skeleton-row {
   height: 52px;
