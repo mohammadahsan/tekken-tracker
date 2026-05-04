@@ -98,6 +98,23 @@ class BracketVisualizer {
       }
     });
 
+    // Build advancement map: playerId → next pool
+    const phaseOrder = ['Round1', 'Round2', 'Round3', 'Semifinals', 'Finals'];
+    const nextPhase = phaseOrder[phaseOrder.indexOf(phaseName) + 1];
+    const advancementMap = new Map();
+
+    if (nextPhase && this.players) {
+      this.players.forEach(player => {
+        const nextSeed = (player.seeds || []).find(s => s.phaseGroup?.phase?.name === nextPhase);
+        if (nextSeed) {
+          advancementMap.set(String(player.id), {
+            pool: nextSeed.phaseGroup.displayIdentifier,
+            phase: nextPhase
+          });
+        }
+      });
+    }
+
     const pools = Array.from(poolsWithTracked).sort();
     let html = `<h2 style="color: #ff6200; margin-bottom: 10px;">${phaseName} - Interactive Bracket</h2>`;
     html += `<div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 15px;">✓ = Tracked player | Scroll to zoom, drag to pan</div>`;
@@ -129,7 +146,7 @@ class BracketVisualizer {
 
         poolsContainer.appendChild(poolDiv);
 
-        this.renderD3Bracket(data.bracket, poolName, `d3-bracket-${poolId}`);
+        this.renderD3Bracket(data.bracket, poolName, `d3-bracket-${poolId}`, phaseName, advancementMap);
       } catch (e) {
         const errorDiv = document.createElement('p');
         errorDiv.style.cssText = 'color: #ef4444;';
@@ -139,7 +156,7 @@ class BracketVisualizer {
     }
   }
 
-  renderD3Bracket(bracket, poolName, containerId) {
+  renderD3Bracket(bracket, poolName, containerId, phaseName, advancementMap) {
     // Create D3 visualization
     const container = document.getElementById(containerId || 'd3-bracket-container');
     if (!container) return;
@@ -152,12 +169,33 @@ class BracketVisualizer {
     const colGap = 140;
     const rowGap = 60;
     const padding = 40;
+    const sectionGap = 80;
+
+    // Helper to group by round
+    const groupByRound = (sets) => {
+      const rounds = {};
+      sets.forEach(s => {
+        const round = Math.abs(s.round || 0);
+        if (!rounds[round]) rounds[round] = [];
+        rounds[round].push(s);
+      });
+      return rounds;
+    };
+
+    const winnerRounds = groupByRound(winners);
+    const loserRounds = groupByRound(losers);
+    const winnerMaxRows = Math.max(...Object.values(winnerRounds).map(r => r.length), 0);
+    const loserMaxRows = Math.max(...Object.values(loserRounds).map(r => r.length), 0);
+
+    const winnerHeight = winnerMaxRows * rowGap + padding + 60; // +60 for title
+    const loserHeight = loserMaxRows * rowGap + padding + 60;
 
     const winnerCols = Math.max(...winners.map(s => Math.abs(s.round || 0)), 0);
     const loserCols = Math.max(...losers.map(s => Math.abs(s.round || 0)), 0);
-    const totalCols = winnerCols + loserCols + 2;
-    const width = totalCols * colGap + padding * 2;
-    const height = Math.max(winners.length, losers.length) * rowGap + padding * 2 + 100;
+    const maxCols = Math.max(winnerCols, loserCols);
+
+    const width = maxCols * colGap + padding * 2 + 150; // +150 for advancement labels
+    const height = winnerHeight + sectionGap + loserHeight + padding;
 
     // Clear and create SVG
     d3.select(container).html('');
@@ -178,10 +216,10 @@ class BracketVisualizer {
     svg.call(zoom);
 
     // Render matches
-    this.renderD3Matches(g, bracket, boxWidth, boxHeight, padding, colGap, rowGap);
+    this.renderD3Matches(g, bracket, boxWidth, boxHeight, padding, colGap, rowGap, winnerHeight, sectionGap, advancementMap);
   }
 
-  renderD3Matches(g, bracket, boxWidth, boxHeight, padding, colGap, rowGap) {
+  renderD3Matches(g, bracket, boxWidth, boxHeight, padding, colGap, rowGap, winnerHeight, sectionGap, advancementMap) {
     const groupByRound = (sets) => {
       const rounds = {};
       sets.forEach(s => {
@@ -195,7 +233,7 @@ class BracketVisualizer {
     const winners = bracket.filter(s => (s.round || 0) > 0);
     const losers = bracket.filter(s => (s.round || 0) < 0);
 
-    const renderSection = (sets, offsetX, isLoser) => {
+    const renderSection = (sets, offsetX, offsetY, isLoser) => {
       const rounds = groupByRound(sets);
       const sortedRounds = Object.keys(rounds).map(Number).sort((a, b) => a - b);
 
@@ -208,7 +246,7 @@ class BracketVisualizer {
           x: padding + offsetX + colIndex * colGap,
           matches: roundMatches.map((m, idx) => ({
             match: m,
-            y: padding + idx * rowGap,
+            y: padding + offsetY + idx * rowGap,
             id: m.id
           }))
         };
@@ -311,9 +349,39 @@ class BracketVisualizer {
           }
         });
       });
+
+      // Add advancement labels for winners bracket
+      if (!isLoser && advancementMap && advancementMap.size > 0) {
+        const lastRound = Math.max(...sortedRounds);
+        const lastRoundData = layout[lastRound];
+
+        lastRoundData.matches.forEach(matchData => {
+          const m = matchData.match;
+          if (!m.completedAt || !m.winnerId) return;
+
+          // Check if winner is tracked
+          const winner = m.slots?.find(s => s.entrant?.id === m.winnerId)?.entrant;
+          if (!winner || !this.trackedIds.has(String(winner.id))) return;
+
+          const advancement = advancementMap.get(String(winner.id));
+          if (!advancement) return;
+
+          // Render arrow + pool label to the right of the match box
+          const arrowX = lastRoundData.x + boxWidth + 8;
+          const arrowY = matchData.y + boxHeight / 2;
+
+          g.append('text')
+            .attr('x', arrowX)
+            .attr('y', arrowY + 4)
+            .attr('font-size', 8)
+            .attr('font-weight', 700)
+            .attr('fill', '#ff6200')
+            .text(`→ ${advancement.phase}: Pool ${advancement.pool}`);
+        });
+      }
     };
 
-    // Render winners bracket
+    // Render winners bracket (top)
     if (winners.length > 0) {
       const title = g.append('text')
         .attr('x', padding)
@@ -322,21 +390,20 @@ class BracketVisualizer {
         .attr('font-weight', 600)
         .attr('fill', '#ff6200')
         .text('Winners Bracket');
-      renderSection.call(this, winners, 0, false);
+      renderSection.call(this, winners, 0, 0, false);
     }
 
-    // Render losers bracket
+    // Render losers bracket (bottom)
     if (losers.length > 0) {
-      const maxWinnerCols = winners.length > 0 ? Math.max(...winners.map(s => Math.abs(s.round || 0))) : 0;
-      const offsetX = (maxWinnerCols + 1) * colGap;
+      const loserOffsetY = winnerHeight + sectionGap;
       const title = g.append('text')
-        .attr('x', padding + offsetX)
-        .attr('y', padding - 20)
+        .attr('x', padding)
+        .attr('y', loserOffsetY - 20)
         .attr('font-size', 14)
         .attr('font-weight', 600)
         .attr('fill', '#ff6200')
         .text('Losers Bracket');
-      renderSection.call(this, losers, offsetX, true);
+      renderSection.call(this, losers, 0, loserOffsetY, true);
     }
   }
 
