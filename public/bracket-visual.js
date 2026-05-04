@@ -233,6 +233,12 @@ class BracketVisualizer {
     const winners = bracket.filter(s => (s.round || 0) > 0);
     const losers = bracket.filter(s => (s.round || 0) < 0);
 
+    // Create lookup maps for finding matches by ID
+    const winnerMap = new Map();
+    winners.forEach(w => winnerMap.set(String(w.id), w));
+    const loserMap = new Map();
+    losers.forEach(l => loserMap.set(String(l.id), l));
+
     const renderSection = (sets, offsetX, offsetY, isLoser) => {
       const rounds = groupByRound(sets);
       const sortedRounds = Object.keys(rounds).map(Number).sort((a, b) => a - b);
@@ -296,6 +302,9 @@ class BracketVisualizer {
         .attr('stroke-width', 2)
         .attr('fill', 'none')
         .attr('opacity', 0.6);
+
+      // Return layout for cross-bracket line drawing
+      return layout;
 
       // Render matches
       Object.entries(layout).forEach(([round, data]) => {
@@ -381,6 +390,9 @@ class BracketVisualizer {
       }
     };
 
+    let winnerLayout = {};
+    let loserLayout = {};
+
     // Render winners bracket (top)
     if (winners.length > 0) {
       const title = g.append('text')
@@ -390,7 +402,7 @@ class BracketVisualizer {
         .attr('font-weight', 600)
         .attr('fill', '#ff6200')
         .text('Winners Bracket');
-      renderSection.call(this, winners, 0, 0, false);
+      winnerLayout = renderSection.call(this, winners, 0, 0, false);
     }
 
     // Render losers bracket (bottom)
@@ -403,8 +415,55 @@ class BracketVisualizer {
         .attr('font-weight', 600)
         .attr('fill', '#ff6200')
         .text('Losers Bracket');
-      renderSection.call(this, losers, 0, loserOffsetY, true);
+      loserLayout = renderSection.call(this, losers, 0, loserOffsetY, true);
     }
+
+    // Draw cross-bracket lines (winners to losers)
+    const crossLines = [];
+    losers.forEach(loserSet => {
+      (loserSet.slots || []).forEach(slot => {
+        if (!slot.prereqId) return;
+        const winnerSet = winnerMap.get(slot.prereqId);
+        if (!winnerSet) return;
+
+        const loserRound = Math.abs(loserSet.round || 0);
+        const winnerRound = Math.abs(winnerSet.round || 0);
+
+        const loserLayout_ = loserLayout[loserRound];
+        const winnerLayout_ = winnerLayout[winnerRound];
+
+        if (!loserLayout_ || !winnerLayout_) return;
+
+        const loserPos = loserLayout_.matches.find(m => m.id === loserSet.id);
+        const winnerPos = winnerLayout_.matches.find(m => m.id === winnerSet.id);
+
+        if (loserPos && winnerPos) {
+          crossLines.push({
+            x1: winnerLayout_.x + boxWidth,
+            y1: winnerPos.y + boxHeight / 2,
+            x2: loserLayout_.x,
+            y2: loserPos.y + boxHeight / 2
+          });
+        }
+      });
+    });
+
+    // Render cross-bracket lines (in a distinctive color)
+    g.selectAll('.line-cross')
+      .data(crossLines)
+      .enter()
+      .append('path')
+      .attr('class', 'line-cross')
+      .attr('d', d => {
+        const midX = (d.x1 + d.x2) / 2;
+        const midY = (d.y1 + d.y2) / 2;
+        return `M ${d.x1} ${d.y1} L ${midX} ${midY} L ${d.x2} ${d.y2}`;
+      })
+      .attr('stroke', '#f97316')
+      .attr('stroke-width', 1.5)
+      .attr('fill', 'none')
+      .attr('opacity', 0.5)
+      .attr('stroke-dasharray', '4,4');
   }
 
   renderPoolBracket(poolName, sets) {
