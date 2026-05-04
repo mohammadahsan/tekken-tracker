@@ -303,9 +303,6 @@ class BracketVisualizer {
         .attr('fill', 'none')
         .attr('opacity', 0.6);
 
-      // Return layout for cross-bracket line drawing
-      return layout;
-
       // Render matches
       Object.entries(layout).forEach(([round, data]) => {
         data.matches.forEach(matchData => {
@@ -388,6 +385,9 @@ class BracketVisualizer {
             .text(`→ ${advancement.phase}: Pool ${advancement.pool}`);
         });
       }
+
+      // Return layout for cross-bracket line drawing
+      return layout;
     };
 
     let winnerLayout = {};
